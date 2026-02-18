@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar" if tarifa else "Nueva" }} Tarifa{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h4 class="mb-3">{{ "Editar" if tarifa else "Nueva" }} Tarifa</h4>
+
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Nombre *</label>
+          <input class="form-control" name="nombre" value="{{ tarifa.nombre if tarifa else '' }}" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Desde *</label>
+          <input type="date" class="form-control" name="vigencia_desde" value="{{ tarifa.vigencia_desde if tarifa else '' }}" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Hasta *</label>
+          <input type="date" class="form-control" name="vigencia_hasta" value="{{ tarifa.vigencia_hasta if tarifa else '' }}" required>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Tipo *</label>
+          <select class="form-select" name="tipo_calculo" required>
+            {% set tc = tarifa.tipo_calculo if tarifa else 'FIJO' %}
+            {% for x in TIPOS %}
+              <option value="{{ x }}" {% if tc==x %}selected{% endif %}>{{ x }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">FIJO usa Valor. Otros usan Detalles.</div>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Valor (solo FIJO)</label>
+          <input class="form-control" name="valor" value="{{ tarifa.valor if tarifa and tarifa.valor else '' }}" placeholder="Ej: 25.00">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Prioridad</label>
+          <input class="form-control" name="prioridad" value="{{ tarifa.prioridad if tarifa else 1 }}">
+          <div class="form-text">Menor número = se aplica primero.</div>
+        </div>
+      </div>
+
+      <div class="mt-4 d-flex gap-2">
+        <button class="btn btn-primary">Guardar</button>
+        <a class="btn btn-secondary" href="{{ url_for('tarifas.index', evento_id=evento.id) }}">Volver</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

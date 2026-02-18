@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Detalles Tarifa | {{ tarifa.nombre }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="mb-0">Detalles de Tarifa</h3>
+    <div class="text-muted">{{ evento.nombre }} · {{ tarifa.nombre }} · {{ tarifa.tipo_calculo }}</div>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ url_for('tarifas.index', evento_id=evento.id) }}">Volver</a>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form method="post" class="row g-2 align-items-end">
+      {% if tarifa.tipo_calculo == 'POR_CATEGORIA' %}
+      <div class="col-md-6">
+        <label class="form-label">Categoría</label>
+        <select class="form-select" name="categoria_id" required>
+          <option value="">-- Seleccione --</option>
+          {% for c in categorias %}
+          <option value="{{ c.id }}">{{ c.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      {% if tarifa.tipo_calculo == 'POR_DIVISION_POOMSAE' %}
+      <div class="col-md-6">
+        <label class="form-label">División Poomsae</label>
+        <select class="form-select" name="division_poomsae_id" required>
+          <option value="">-- Seleccione --</option>
+          {% for d in divisiones %}
+          <option value="{{ d.id }}">{{ d.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      {% if tarifa.tipo_calculo == 'POR_NIVEL_DAN' %}
+      <div class="col-md-4">
+        <label class="form-label">Dan</label>
+        <input class="form-control" name="dan_nivel" type="number" min="1" max="9" required>
+      </div>
+      {% endif %}
+
+      <div class="col-md-3">
+        <label class="form-label">Valor</label>
+        <input class="form-control" name="valor" placeholder="Ej: 25.00" required>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-primary w-100">Agregar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Dimensión</th>
+          <th>Valor</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for d in detalles %}
+        <tr>
+          <td>{{ d.id }}</td>
+          <td>
+            {% if d.categoria_id %}Categoría #{{ d.categoria_id }}{% endif %}
+            {% if d.division_poomsae_id %}División #{{ d.division_poomsae_id }}{% endif %}
+            {% if d.dan_nivel %}Dan {{ d.dan_nivel }}{% endif %}
+          </td>
+          <td>{{ d.valor }}</td>
+          <td class="text-end">
+            <form method="post" action="{{ url_for('tarifas.eliminar_detalle', evento_id=evento.id, tarifa_id=tarifa.id, detalle_id=d.id) }}"
+                  onsubmit="return confirm('¿Eliminar detalle?');">
+              <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

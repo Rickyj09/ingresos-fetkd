@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Ingreso por Club{% endblock %}
+{% block content %}
+<h3>Ingreso por Club (Academia)</h3>
+{% include "reportes/_filtros.html" ignore missing %}
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Academia</th>
+          <th class="text-end">Inscripciones</th>
+          <th class="text-end">Pagos</th>
+          <th class="text-end">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td>{{ r.nombre }}</td>
+          <td class="text-end">{{ r.inscripciones }}</td>
+          <td class="text-end">{{ r.pagos }}</td>
+          <td class="text-end">{{ "%.2f"|format(r.total) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

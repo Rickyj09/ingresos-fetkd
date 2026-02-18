@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# Virtualenv
+.venv/
+venv/
+ENV/
+
+# Flask / instance / secrets
+instance/
+*.sqlite3
+
+# Migrations (sí se suben)
+# migrations/   <-- NO lo ignores
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# MySQL dumps / exports
+*.sql
+*.csv
+
+# Env files
+.env
+.env.*

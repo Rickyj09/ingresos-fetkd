@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Afiliaciones{% endblock %}
+{% block content %}
+<h3>Ingresos por Afiliación (Nueva / Renovación)</h3>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-3"><label class="form-label">Desde</label>
+    <input type="date" class="form-control" name="desde" value="{{ filtros.desde or '' }}"></div>
+  <div class="col-md-3"><label class="form-label">Hasta</label>
+    <input type="date" class="form-control" name="hasta" value="{{ filtros.hasta or '' }}"></div>
+  <div class="col-md-2"><label class="form-label">Año</label>
+    <input class="form-control" name="anio" value="{{ filtros.anio or '' }}"></div>
+  <div class="col-md-2 d-flex align-items-end">
+    <button class="btn btn-outline-secondary w-100">Aplicar</button>
+  </div>
+</form>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Tipo</th>
+          <th class="text-end">Inscripciones</th>
+          <th class="text-end">Academias</th>
+          <th class="text-end">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td>{{ r.tipo }}</td>
+          <td class="text-end">{{ r.inscripciones }}</td>
+          <td class="text-end">{{ r.academias }}</td>
+          <td class="text-end">{{ "%.2f"|format(r.total) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

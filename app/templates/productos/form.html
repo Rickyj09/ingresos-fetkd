@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar" if producto else "Nuevo" }} Producto/Servicio{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h4 class="mb-3">{{ "Editar" if producto else "Nuevo" }} Producto/Servicio</h4>
+
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Rubro *</label>
+          <select class="form-select" name="rubro_id" required>
+            <option value="">-- Seleccione --</option>
+            {% for r in rubros %}
+            <option value="{{ r.id }}" {% if producto and producto.rubro_id==r.id %}selected{% endif %}>{{ r.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Nombre *</label>
+          <input class="form-control" name="nombre" value="{{ producto.nombre if producto else '' }}" required>
+        </div>
+        <div class="col-md-12">
+          <label class="form-label">Descripción</label>
+          <textarea class="form-control" name="descripcion" rows="3">{{ producto.descripcion if producto else '' }}</textarea>
+        </div>
+
+        <div class="col-md-12">
+          <label class="form-label">Reglas (para UI/validación)</label>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="requiere_categoria" id="rc"
+                   {% if producto and producto.requiere_categoria %}checked{% endif %}>
+            <label class="form-check-label" for="rc">Requiere Categoría</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="requiere_dan" id="rd"
+                   {% if producto and producto.requiere_dan %}checked{% endif %}>
+            <label class="form-check-label" for="rd">Requiere Dan</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="requiere_division_poomsae" id="rp"
+                   {% if producto and producto.requiere_division_poomsae %}checked{% endif %}>
+            <label class="form-check-label" for="rp">Requiere División Poomsae</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 d-flex gap-2">
+        <button class="btn btn-primary">Guardar</button>
+        <a class="btn btn-secondary" href="{{ url_for('productos.index') }}">Volver</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

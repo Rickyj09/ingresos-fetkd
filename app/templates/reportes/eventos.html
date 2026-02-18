@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Ingreso por Evento{% endblock %}
+{% block content %}
+<h3>Ingreso por Evento</h3>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-3">
+    <label class="form-label">Desde</label>
+    <input type="date" class="form-control" name="desde" value="{{ filtros.desde or '' }}">
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Hasta</label>
+    <input type="date" class="form-control" name="hasta" value="{{ filtros.hasta or '' }}">
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">Año</label>
+    <input class="form-control" name="anio" value="{{ filtros.anio or '' }}" placeholder="2026">
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">Rubro</label>
+    <input class="form-control" name="rubro" value="{{ rubro or '' }}" placeholder="COMPETENCIA">
+  </div>
+  <div class="col-md-2 d-flex align-items-end">
+    <button class="btn btn-outline-secondary w-100">Aplicar</button>
+  </div>
+</form>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Año</th>
+          <th>Rubro</th>
+          <th>Producto</th>
+          <th>Evento</th>
+          <th class="text-end">Academias</th>
+          <th class="text-end">Pagos</th>
+          <th class="text-end">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td>{{ r.anio }}</td>
+          <td>{{ r.rubro }}</td>
+          <td>{{ r.producto }}</td>
+          <td>{{ r.evento }}</td>
+          <td class="text-end">{{ r.academias }}</td>
+          <td class="text-end">{{ r.pagos }}</td>
+          <td class="text-end">{{ "%.2f"|format(r.total) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

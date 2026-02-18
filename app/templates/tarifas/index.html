@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Tarifas | {{ evento.nombre }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="mb-0">Tarifas</h3>
+    <div class="text-muted">{{ evento.producto.nombre }} · {{ evento.nombre }} ({{ evento.anio }})</div>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('eventos.index') }}">Volver</a>
+    <a class="btn btn-primary" href="{{ url_for('tarifas.nueva', evento_id=evento.id) }}">Nueva tarifa</a>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Prioridad</th>
+          <th>Nombre</th>
+          <th>Vigencia</th>
+          <th>Tipo</th>
+          <th>Valor</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tarifas %}
+        <tr>
+          <td>{{ t.prioridad }}</td>
+          <td>{{ t.nombre }}</td>
+          <td>{{ t.vigencia_desde }} → {{ t.vigencia_hasta }}</td>
+          <td>{{ t.tipo_calculo }}</td>
+          <td>{{ t.valor if t.valor else "-" }}</td>
+          <td class="text-end">
+            {% if t.tipo_calculo != 'FIJO' %}
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('tarifas.detalles', evento_id=evento.id, tarifa_id=t.id) }}">Detalles</a>
+            {% endif %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('tarifas.editar', evento_id=evento.id, tarifa_id=t.id) }}">Editar</a>
+            <form method="post" action="{{ url_for('tarifas.eliminar', evento_id=evento.id, tarifa_id=t.id) }}" class="d-inline"
+                  onsubmit="return confirm('¿Eliminar tarifa?');">
+              <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

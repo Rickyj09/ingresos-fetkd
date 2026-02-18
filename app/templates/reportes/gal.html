@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}GAL{% endblock %}
+{% block content %}
+<h3>Ingresos por GAL (por Academia)</h3>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-3"><label class="form-label">Desde</label>
+    <input type="date" class="form-control" name="desde" value="{{ filtros.desde or '' }}"></div>
+  <div class="col-md-3"><label class="form-label">Hasta</label>
+    <input type="date" class="form-control" name="hasta" value="{{ filtros.hasta or '' }}"></div>
+  <div class="col-md-2"><label class="form-label">Año</label>
+    <input class="form-control" name="anio" value="{{ filtros.anio or '' }}"></div>
+  <div class="col-md-2 d-flex align-items-end">
+    <button class="btn btn-outline-secondary w-100">Aplicar</button>
+  </div>
+</form>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Academia</th>
+          <th>Tipo GAL</th>
+          <th class="text-end">Pagos</th>
+          <th class="text-end">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td>{{ r.nombre }}</td>
+          <td>{{ r.tipo_gal }}</td>
+          <td class="text-end">{{ r.pagos }}</td>
+          <td class="text-end">{{ "%.2f"|format(r.total) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

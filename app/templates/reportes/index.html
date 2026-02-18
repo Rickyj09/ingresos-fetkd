@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Reportes{% endblock %}
+{% block content %}
+<h3>Reportes de Ingresos</h3>
+<div class="list-group">
+  <a class="list-group-item list-group-item-action" href="{{ url_for('reportes.clubes') }}">Ingreso por Club (Academia)</a>
+  <a class="list-group-item list-group-item-action" href="{{ url_for('reportes.eventos') }}">Ingreso por Evento</a>
+  <a class="list-group-item list-group-item-action" href="{{ url_for('reportes.afiliaciones') }}">Afiliaciones (Nueva vs Renovación)</a>
+  <a class="list-group-item list-group-item-action" href="{{ url_for('reportes.ascensos') }}">Ascensos por Dan (Nac/Int)</a>
+  <a class="list-group-item list-group-item-action" href="{{ url_for('reportes.gal') }}">GAL por Academia</a>
+</div>
+{% endblock %}

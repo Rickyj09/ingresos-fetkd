@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar" if evento else "Nuevo" }} Evento{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h4 class="mb-3">{{ "Editar" if evento else "Nuevo" }} Evento</h4>
+
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Producto/Servicio *</label>
+          <select class="form-select" name="producto_id" required>
+            <option value="">-- Seleccione --</option>
+            {% for p in productos %}
+            <option value="{{ p.id }}" {% if evento and evento.producto_id==p.id %}selected{% endif %}>{{ p.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Año *</label>
+          <input class="form-control" name="anio" value="{{ evento.anio if evento else '' }}" required>
+        </div>
+
+        <div class="col-md-8">
+          <label class="form-label">Nombre *</label>
+          <input class="form-control" name="nombre" value="{{ evento.nombre if evento else '' }}" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Estado</label>
+          <select class="form-select" name="estado">
+            {% set st = evento.estado if evento else 'BORRADOR' %}
+            <option value="BORRADOR" {% if st=='BORRADOR' %}selected{% endif %}>BORRADOR</option>
+            <option value="ABIERTO" {% if st=='ABIERTO' %}selected{% endif %}>ABIERTO</option>
+            <option value="CERRADO" {% if st=='CERRADO' %}selected{% endif %}>CERRADO</option>
+          </select>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Sede</label>
+          <input class="form-control" name="sede" value="{{ evento.sede if evento else '' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Inicio</label>
+          <input type="date" class="form-control" name="fecha_inicio" value="{{ evento.fecha_inicio if evento else '' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Fin</label>
+          <input type="date" class="form-control" name="fecha_fin" value="{{ evento.fecha_fin if evento else '' }}">
+        </div>
+      </div>
+
+      <div class="mt-4 d-flex gap-2">
+        <button class="btn btn-primary">Guardar</button>
+        <a class="btn btn-secondary" href="{{ url_for('eventos.index') }}">Volver</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
