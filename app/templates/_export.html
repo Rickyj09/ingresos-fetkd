@@ -1,0 +1,5 @@
+<div class="d-flex gap-2 mb-3">
+  <a class="btn btn-sm btn-outline-success"
+     href="{{ request.path }}?{{ request.args.to_dict() | dictsort | map(attribute=0) | list }}">
+  </a>
+</div>

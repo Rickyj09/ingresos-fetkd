@@ -1,7 +1,7 @@
 from flask import render_template, request
 from flask_login import login_required
 from sqlalchemy import func, distinct
-
+from app.utils.export import export_csv, export_xlsx
 from app.extensions import db
 from app.models import (
     Pago, Inscripcion, InscripcionDetalle,
@@ -65,6 +65,14 @@ def clubes():
 
     q = _apply_filters(q, f)
     rows = q.all()
+    export = (request.args.get("export") or "").lower()
+    if export in ("csv", "xlsx"):
+        headers = ["Academia", "Inscripciones", "Pagos", "Total"]
+        data = [(r.nombre, int(r.inscripciones), int(r.pagos), float(r.total or 0)) for r in rows]
+        if export == "csv":
+            return export_csv("ingresos_por_club", headers, data)
+        return export_xlsx("ingresos_por_club", headers, data)
+
     return render_template("reportes/clubes.html", rows=rows, filtros=f)
 
 
@@ -99,6 +107,17 @@ def eventos():
         q = q.filter(Rubro.codigo == rubro)
 
     rows = q.all()
+    export = (request.args.get("export") or "").lower()
+    if export in ("csv", "xlsx"):
+        headers = ["Año", "Rubro", "Producto", "Evento", "Academias", "Pagos", "Total"]
+        data = [
+            (r.anio, r.rubro, r.producto, r.evento, int(r.academias), int(r.pagos), float(r.total or 0))
+            for r in rows
+        ]
+        if export == "csv":
+            return export_csv("ingresos_por_evento", headers, data)
+        return export_xlsx("ingresos_por_evento", headers, data)
+
     return render_template("reportes/eventos.html", rows=rows, filtros=f, rubro=rubro)
 
 
@@ -127,6 +146,15 @@ def afiliaciones():
 
     q = _apply_filters(q, f)
     rows = q.all()
+
+    export = (request.args.get("export") or "").lower()
+    if export in ("csv", "xlsx"):
+        headers = ["Tipo", "Inscripciones", "Academias", "Total"]
+        data = [(r.tipo, int(r.inscripciones), int(r.academias), float(r.total or 0)) for r in rows]
+        if export == "csv":
+            return export_csv("ingresos_afiliaciones", headers, data)
+        return export_xlsx("ingresos_afiliaciones", headers, data)
+
     return render_template("reportes/afiliaciones.html", rows=rows, filtros=f)
 
 
@@ -158,6 +186,14 @@ def ascensos():
 
     q = _apply_filters(q, f)
     rows = q.all()
+    export = (request.args.get("export") or "").lower()
+    if export in ("csv", "xlsx"):
+        headers = ["Tipo Ascenso", "Dan", "Inscripciones", "Academias", "Total"]
+        data = [(r.tipo_ascenso, int(r.dan), int(r.inscripciones), int(r.academias), float(r.total or 0)) for r in rows]
+        if export == "csv":
+            return export_csv("ingresos_ascensos", headers, data)
+        return export_xlsx("ingresos_ascensos", headers, data)
+
     return render_template("reportes/ascensos.html", rows=rows, filtros=f)
 
 
@@ -187,4 +223,12 @@ def gal():
 
     q = _apply_filters(q, f)
     rows = q.all()
+    export = (request.args.get("export") or "").lower()
+    if export in ("csv", "xlsx"):
+        headers = ["Academia", "Tipo GAL", "Pagos", "Total"]
+        data = [(r.nombre, r.tipo_gal, int(r.pagos), float(r.total or 0)) for r in rows]
+        if export == "csv":
+            return export_csv("ingresos_gal", headers, data)
+        return export_xlsx("ingresos_gal", headers, data)
+
     return render_template("reportes/gal.html", rows=rows, filtros=f)

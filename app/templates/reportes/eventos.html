@@ -4,6 +4,7 @@
 <h3>Ingreso por Evento</h3>
 
 <form class="row g-2 mb-3" method="get">
+    {% include "reportes/_export.html" %}
   <div class="col-md-3">
     <label class="form-label">Desde</label>
     <input type="date" class="form-control" name="desde" value="{{ filtros.desde or '' }}">
