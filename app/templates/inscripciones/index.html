@@ -1,0 +1,108 @@
+{# DEBUG: puedes dejar esto si quieres confirmar el template #}
+
+
+{% extends "base.html" %}
+{% block title %}Inscripciones{% endblock %}
+{% block content %}
+
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>Inscripciones</h3>
+  <a href="{{ url_for('inscripciones.nuevo') }}" class="btn btn-primary">Nueva</a>
+</div>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-2">
+    <input class="form-control" name="anio" placeholder="Año (ej: 2026)" value="{{ filtros.anio }}">
+  </div>
+
+  <div class="col-md-3">
+    <select class="form-select" name="evento_id">
+      <option value="">-- Evento (todos) --</option>
+      {% for e in eventos %}
+        <option value="{{ e.id }}" {% if (filtros.evento_id|int) == e.id %}selected{% endif %}>
+          {{ e.anio }} - {{ e.nombre }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-3">
+    <select class="form-select" name="academia_id">
+      <option value="">-- Academia (todas) --</option>
+      {% for a in academias %}
+        <option value="{{ a.id }}" {% if (filtros.academia_id|int) == a.id %}selected{% endif %}>
+          {{ a.nombre }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-2">
+    <select class="form-select" name="estado">
+      <option value="">-- Estado (todos) --</option>
+      {% for st in estados %}
+        <option value="{{ st }}" {% if filtros.estado == st %}selected{% endif %}>{{ st }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-1 d-grid">
+    <button class="btn btn-outline-secondary">Filtrar</button>
+  </div>
+
+  <div class="col-md-1 d-grid">
+    <a class="btn btn-outline-dark" href="{{ url_for('inscripciones.index') }}">Limpiar</a>
+  </div>
+</form>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+
+    {% if rows|length == 0 %}
+      <div class="text-muted">No hay inscripciones con esos filtros.</div>
+    {% else %}
+      <div class="table-responsive">
+        <table class="table table-striped align-middle mb-0">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Año</th>
+              <th>Evento</th>
+              <th>Producto</th>
+              <th>Academia</th>
+              <th>Estado</th>
+              <th class="text-end">Total</th>
+              <th class="text-end">Saldo</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for ins, e, a, p in rows %}
+              <tr>
+                <td>{{ ins.id }}</td>
+                <td>{{ e.anio }}</td>
+                <td>{{ e.nombre }}</td>
+                <td>{{ p.nombre }}</td>
+                <td>{{ a.nombre }}</td>
+                <td><span class="badge text-bg-secondary">{{ ins.estado }}</span></td>
+                <td class="text-end">{{ "%.2f"|format(ins.total or 0) }}</td>
+                <td class="text-end">{{ "%.2f"|format(ins.saldo or 0) }}</td>
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-primary"
+                     href="{{ url_for('inscripciones.pagos', inscripcion_id=ins.id) }}">
+                    Pagos
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

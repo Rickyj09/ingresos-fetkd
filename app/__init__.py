@@ -1,3 +1,4 @@
+import os 
 from flask import Flask
 from app.config import Config
 from app.extensions import db, migrate, login_manager
@@ -8,10 +9,18 @@ from app.blueprints.productos import bp as productos_bp
 from app.blueprints.eventos import bp as eventos_bp
 from app.blueprints.tarifas import bp as tarifas_bp
 from app.blueprints.reportes import bp as reportes_bp
+from app.blueprints.inscripciones import bp as inscripciones_bp
 
 
 def create_app():
-    app = Flask(__name__)
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+
+    app = Flask(
+        __name__,
+        template_folder=os.path.join(base_dir, "templates"),
+        static_folder=os.path.join(base_dir, "static"),
+    )
+
     app.config.from_object(Config)
     
     db.init_app(app)
@@ -29,6 +38,7 @@ def create_app():
     app.register_blueprint(eventos_bp)
     app.register_blueprint(tarifas_bp)
     app.register_blueprint(reportes_bp)
+    app.register_blueprint(inscripciones_bp)
 
     
     return app
