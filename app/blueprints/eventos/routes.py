@@ -1,8 +1,22 @@
+from datetime import datetime
+
 from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_required
+
 from app.extensions import db
 from app.models import Evento, ProductoServicio
 from . import bp
+
+
+def _parse_date(value: str | None):
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
 
 @bp.route("/")
 @login_required
@@ -18,7 +32,14 @@ def index():
 
     eventos = query.all()
     productos = ProductoServicio.query.order_by(ProductoServicio.nombre.asc()).all()
-    return render_template("eventos/index.html", eventos=eventos, productos=productos, anio=anio, producto_id=producto_id)
+    return render_template(
+        "eventos/index.html",
+        eventos=eventos,
+        productos=productos,
+        anio=anio,
+        producto_id=producto_id,
+    )
+
 
 @bp.route("/nuevo", methods=["GET", "POST"])
 @login_required
@@ -30,12 +51,23 @@ def nuevo():
         nombre = (request.form.get("nombre") or "").strip()
         anio = request.form.get("anio", type=int)
         sede = (request.form.get("sede") or "").strip() or None
-        fecha_inicio = request.form.get("fecha_inicio") or None
-        fecha_fin = request.form.get("fecha_fin") or None
+        fecha_inicio_str = request.form.get("fecha_inicio")
+        fecha_fin_str = request.form.get("fecha_fin")
         estado = request.form.get("estado") or "BORRADOR"
 
         if not producto_id or not nombre or not anio:
             flash("Producto, Nombre y Año son obligatorios", "danger")
+            return render_template("eventos/form.html", evento=None, productos=productos)
+
+        fecha_inicio = _parse_date(fecha_inicio_str)
+        fecha_fin = _parse_date(fecha_fin_str)
+
+        if fecha_inicio_str and not fecha_inicio:
+            flash("Fecha inicio inválida. Usa formato YYYY-MM-DD.", "danger")
+            return render_template("eventos/form.html", evento=None, productos=productos)
+
+        if fecha_fin_str and not fecha_fin:
+            flash("Fecha fin inválida. Usa formato YYYY-MM-DD.", "danger")
             return render_template("eventos/form.html", evento=None, productos=productos)
 
         e = Evento(
@@ -54,6 +86,7 @@ def nuevo():
 
     return render_template("eventos/form.html", evento=None, productos=productos)
 
+
 @bp.route("/<int:evento_id>/editar", methods=["GET", "POST"])
 @login_required
 def editar(evento_id: int):
@@ -61,19 +94,43 @@ def editar(evento_id: int):
     productos = ProductoServicio.query.order_by(ProductoServicio.nombre.asc()).all()
 
     if request.method == "POST":
-        evento.producto_id = request.form.get("producto_id", type=int)
-        evento.nombre = (request.form.get("nombre") or "").strip()
-        evento.anio = request.form.get("anio", type=int)
-        evento.sede = (request.form.get("sede") or "").strip() or None
-        evento.fecha_inicio = request.form.get("fecha_inicio") or None
-        evento.fecha_fin = request.form.get("fecha_fin") or None
-        evento.estado = request.form.get("estado") or "BORRADOR"
+        producto_id = request.form.get("producto_id", type=int)
+        nombre = (request.form.get("nombre") or "").strip()
+        anio = request.form.get("anio", type=int)
+        sede = (request.form.get("sede") or "").strip() or None
+        fecha_inicio_str = request.form.get("fecha_inicio")
+        fecha_fin_str = request.form.get("fecha_fin")
+        estado = request.form.get("estado") or "BORRADOR"
+
+        if not producto_id or not nombre or not anio:
+            flash("Producto, Nombre y Año son obligatorios", "danger")
+            return render_template("eventos/form.html", evento=evento, productos=productos)
+
+        fecha_inicio = _parse_date(fecha_inicio_str)
+        fecha_fin = _parse_date(fecha_fin_str)
+
+        if fecha_inicio_str and not fecha_inicio:
+            flash("Fecha inicio inválida. Usa formato YYYY-MM-DD.", "danger")
+            return render_template("eventos/form.html", evento=evento, productos=productos)
+
+        if fecha_fin_str and not fecha_fin:
+            flash("Fecha fin inválida. Usa formato YYYY-MM-DD.", "danger")
+            return render_template("eventos/form.html", evento=evento, productos=productos)
+
+        evento.producto_id = producto_id
+        evento.nombre = nombre
+        evento.anio = anio
+        evento.sede = sede
+        evento.fecha_inicio = fecha_inicio
+        evento.fecha_fin = fecha_fin
+        evento.estado = estado
 
         db.session.commit()
         flash("Evento actualizado", "success")
         return redirect(url_for("eventos.index"))
 
     return render_template("eventos/form.html", evento=evento, productos=productos)
+
 
 @bp.route("/<int:evento_id>/eliminar", methods=["POST"])
 @login_required
