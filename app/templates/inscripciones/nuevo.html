@@ -13,7 +13,12 @@
         <select class="form-select" name="evento_id" required>
           <option value="">-- Seleccionar --</option>
           {% for e in eventos %}
-            <option value="{{ e.id }}">{{ e.anio }} - {{ e.nombre }}</option>
+            <option value="{{ e.id }}">
+              {{ e.anio }} - {{ e.nombre }}
+              {% if e.valor_base is not none %}
+                (Valor base: {{ "%.2f"|format(e.valor_base) }})
+              {% endif %}
+            </option>
           {% endfor %}
         </select>
       </div>
@@ -29,9 +34,11 @@
       </div>
 
       <div class="col-md-4">
-        <label class="form-label">Total a cobrar</label>
-        <input type="number" step="0.01" class="form-control" name="total" value="0">
-        <div class="form-text">Puedes cambiarlo luego cuando integremos detalles por categoría/dan.</div>
+        <label class="form-label">Número de participantes</label>
+        <input type="number" min="1" step="1" class="form-control" name="cantidad_participantes" value="1" required>
+        <div class="form-text">
+          El sistema calculará automáticamente el total según el valor base del evento.
+        </div>
       </div>
 
     </div>

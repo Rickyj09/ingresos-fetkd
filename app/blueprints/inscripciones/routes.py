@@ -42,10 +42,15 @@ def index():
 
     rows = q.all()
 
-    eventos = db.session.query(Evento).order_by(Evento.anio.desc(), Evento.nombre.asc()).all()
-    academias = db.session.query(Academia).order_by(Academia.nombre.asc()).all()
+    eventos = Evento.query.order_by(Evento.anio.desc(), Evento.nombre.asc()).all()
+    academias = Academia.query.order_by(Academia.nombre.asc()).all()
 
-    filtros = dict(anio=anio, evento_id=evento_id, academia_id=academia_id, estado=estado)
+    filtros = {
+        "anio": anio,
+        "evento_id": evento_id,
+        "academia_id": academia_id,
+        "estado": estado,
+    }
 
     return render_template(
         "inscripciones/index.html",
@@ -60,53 +65,64 @@ def index():
 @bp.route("/nuevo", methods=["GET", "POST"])
 @login_required
 def nuevo():
-    eventos = db.session.query(Evento).order_by(Evento.anio.desc(), Evento.nombre.asc()).all()
-    academias = db.session.query(Academia).order_by(Academia.nombre.asc()).all()
+    eventos = Evento.query.order_by(Evento.anio.desc(), Evento.nombre.asc()).all()
+    academias = Academia.query.order_by(Academia.nombre.asc()).all()
 
     if request.method == "POST":
-        evento_id = (request.form.get("evento_id") or "").strip()
-        academia_id = (request.form.get("academia_id") or "").strip()
-        total_str = (request.form.get("total") or "0").strip()
+        evento_id_str = (request.form.get("evento_id") or "").strip()
+        academia_id_str = (request.form.get("academia_id") or "").strip()
+        cantidad_str = (request.form.get("cantidad_participantes") or "1").strip()
 
-        if not evento_id.isdigit() or not academia_id.isdigit():
+        if not evento_id_str.isdigit() or not academia_id_str.isdigit():
             flash("Debe seleccionar Evento y Academia.", "danger")
             return render_template("inscripciones/nuevo.html", eventos=eventos, academias=academias)
 
-        # Normaliza total (acepta 70,00 o 70.00)
-        total_norm = total_str.replace(" ", "").replace("$", "").replace(",", ".")
-        try:
-            total_dec = Decimal(total_norm)
-            if total_dec < 0:
-                raise ValueError()
-        except (InvalidOperation, ValueError):
-            flash("Total inválido. Debe ser un número mayor o igual a 0.", "danger")
+        if not cantidad_str.isdigit() or int(cantidad_str) <= 0:
+            flash("La cantidad de participantes debe ser un número mayor a 0.", "danger")
             return render_template("inscripciones/nuevo.html", eventos=eventos, academias=academias)
 
-        evento_id = int(evento_id)
-        academia_id = int(academia_id)
+        evento_id = int(evento_id_str)
+        academia_id = int(academia_id_str)
+        cantidad_participantes = int(cantidad_str)
+
+        evento = Evento.query.get(evento_id)
+        if not evento:
+            flash("Evento no encontrado.", "danger")
+            return render_template("inscripciones/nuevo.html", eventos=eventos, academias=academias)
 
         existe = (
-            db.session.query(Inscripcion.id)
-            .filter(Inscripcion.evento_id == evento_id, Inscripcion.academia_id == academia_id)
+            Inscripcion.query
+            .filter(
+                Inscripcion.evento_id == evento_id,
+                Inscripcion.academia_id == academia_id
+            )
             .first()
         )
         if existe:
-            flash("Ya existe una inscripción para esa Academia en ese Evento.", "warning")
+            flash("Ya existe una inscripción para esa academia en ese evento.", "warning")
             return render_template("inscripciones/nuevo.html", eventos=eventos, academias=academias)
+
+        valor_base = Decimal(str(evento.valor_base or 0))
+        subtotal = Decimal(cantidad_participantes) * valor_base
+        descuentos = Decimal("0.00")
+        total = subtotal - descuentos
+        saldo = total
 
         ins = Inscripcion(
             evento_id=evento_id,
             academia_id=academia_id,
             estado="BORRADOR",
-            subtotal=total_dec,
-            descuentos=Decimal("0"),
-            total=total_dec,
-            saldo=total_dec,
+            cantidad_participantes=cantidad_participantes,
+            subtotal=subtotal,
+            descuentos=descuentos,
+            total=total,
+            saldo=saldo,
         )
+
         db.session.add(ins)
         db.session.commit()
 
-        flash("Inscripción creada (BORRADOR). Ahora puedes registrar pagos.", "success")
+        flash("Inscripción creada correctamente.", "success")
         return redirect(url_for("inscripciones.index"))
 
     return render_template("inscripciones/nuevo.html", eventos=eventos, academias=academias)
@@ -147,16 +163,15 @@ def pagos_nuevo(inscripcion_id):
     observacion = (request.form.get("observacion") or "").strip()
 
     if not fecha_pago or not valor_raw:
-        flash("Fecha y Valor son obligatorios.", "danger")
+        flash("Fecha y valor son obligatorios.", "danger")
         return redirect(url_for("inscripciones.pagos", inscripcion_id=ins.id))
 
     try:
         fecha_dt = datetime.strptime(fecha_pago, "%Y-%m-%d").date()
     except ValueError:
-        flash("Formato de fecha inválido (use YYYY-MM-DD).", "danger")
+        flash("Formato de fecha inválido. Use YYYY-MM-DD.", "danger")
         return redirect(url_for("inscripciones.pagos", inscripcion_id=ins.id))
 
-    # Normaliza valor (acepta 70,00 o 70.00)
     valor_norm = valor_raw.replace(" ", "").replace("$", "").replace(",", ".")
     try:
         valor_dec = Decimal(valor_norm)

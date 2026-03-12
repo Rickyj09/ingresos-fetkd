@@ -1,10 +1,6 @@
-{# DEBUG: puedes dejar esto si quieres confirmar el template #}
-
-
 {% extends "base.html" %}
 {% block title %}Inscripciones{% endblock %}
 {% block content %}
-
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h3>Inscripciones</h3>
@@ -71,6 +67,7 @@
               <th>Evento</th>
               <th>Producto</th>
               <th>Academia</th>
+              <th class="text-end">Participantes</th>
               <th>Estado</th>
               <th class="text-end">Total</th>
               <th class="text-end">Saldo</th>
@@ -86,6 +83,7 @@
                 <td>{{ e.nombre }}</td>
                 <td>{{ p.nombre }}</td>
                 <td>{{ a.nombre }}</td>
+                <td class="text-end">{{ ins.cantidad_participantes or 0 }}</td>
                 <td><span class="badge text-bg-secondary">{{ ins.estado }}</span></td>
                 <td class="text-end">{{ "%.2f"|format(ins.total or 0) }}</td>
                 <td class="text-end">{{ "%.2f"|format(ins.saldo or 0) }}</td>
