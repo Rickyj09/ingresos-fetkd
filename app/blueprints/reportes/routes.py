@@ -1,3 +1,8 @@
+from decimal import Decimal
+from io import BytesIO
+from flask import send_file
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
 from flask import render_template, request
 from flask_login import login_required
 from sqlalchemy import func, distinct
@@ -5,9 +10,71 @@ from app.utils.export import export_csv, export_xlsx
 from app.extensions import db
 from app.models import (
     Pago, Inscripcion, InscripcionDetalle,
-    Academia, Evento, ProductoServicio, Rubro
+    Academia, Evento, ProductoServicio, Rubro,EgresoEvento
 )
 from . import bp
+
+def _get_balance_evento_data(anio="", evento_id=""):
+    ingresos_sq = (
+        db.session.query(
+            Inscripcion.evento_id.label("evento_id"),
+            func.coalesce(func.sum(Pago.valor), 0).label("ingresos"),
+        )
+        .join(Pago, Pago.inscripcion_id == Inscripcion.id)
+        .group_by(Inscripcion.evento_id)
+        .subquery()
+    )
+
+    egresos_sq = (
+        db.session.query(
+            EgresoEvento.evento_id.label("evento_id"),
+            func.coalesce(func.sum(EgresoEvento.valor), 0).label("egresos"),
+        )
+        .group_by(EgresoEvento.evento_id)
+        .subquery()
+    )
+
+    q = (
+        db.session.query(
+            Evento,
+            func.coalesce(ingresos_sq.c.ingresos, 0).label("ingresos"),
+            func.coalesce(egresos_sq.c.egresos, 0).label("egresos"),
+        )
+        .outerjoin(ingresos_sq, ingresos_sq.c.evento_id == Evento.id)
+        .outerjoin(egresos_sq, egresos_sq.c.evento_id == Evento.id)
+        .order_by(Evento.anio.desc(), Evento.nombre.asc())
+    )
+
+    if anio.isdigit():
+        q = q.filter(Evento.anio == int(anio))
+
+    if evento_id.isdigit():
+        q = q.filter(Evento.id == int(evento_id))
+
+    rows_raw = q.all()
+
+    rows = []
+    total_ingresos = Decimal("0.00")
+    total_egresos = Decimal("0.00")
+    total_balance = Decimal("0.00")
+
+    for evento, ingresos, egresos in rows_raw:
+        ingresos_dec = Decimal(str(ingresos or 0))
+        egresos_dec = Decimal(str(egresos or 0))
+        balance_dec = ingresos_dec - egresos_dec
+
+        rows.append({
+            "evento": evento,
+            "ingresos": ingresos_dec,
+            "egresos": egresos_dec,
+            "balance": balance_dec,
+        })
+
+        total_ingresos += ingresos_dec
+        total_egresos += egresos_dec
+        total_balance += balance_dec
+
+    return rows, total_ingresos, total_egresos, total_balance
 
 
 def _get_filters():
@@ -232,3 +299,98 @@ def gal():
         return export_xlsx("ingresos_gal", headers, data)
 
     return render_template("reportes/gal.html", rows=rows, filtros=f)
+
+@bp.route("/balance-evento")
+@login_required
+def balance_evento():
+    anio = (request.args.get("anio") or "").strip()
+    evento_id = (request.args.get("evento_id") or "").strip()
+
+    rows, total_ingresos, total_egresos, total_balance = _get_balance_evento_data(anio, evento_id)
+
+    eventos = Evento.query.order_by(Evento.anio.desc(), Evento.nombre.asc()).all()
+
+    filtros = {
+        "anio": anio,
+        "evento_id": evento_id,
+    }
+
+    return render_template(
+        "reportes/balance_evento.html",
+        rows=rows,
+        eventos=eventos,
+        filtros=filtros,
+        total_ingresos=total_ingresos,
+        total_egresos=total_egresos,
+        total_balance=total_balance,
+    )
+
+
+@bp.route("/balance-evento/excel")
+@login_required
+def balance_evento_excel():
+    anio = (request.args.get("anio") or "").strip()
+    evento_id = (request.args.get("evento_id") or "").strip()
+
+    rows, total_ingresos, total_egresos, total_balance = _get_balance_evento_data(anio, evento_id)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Balance Evento"
+
+    ws["A1"] = "Balance Financiero por Evento"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws.merge_cells("A1:E1")
+
+    ws["A2"] = "Año"
+    ws["B2"] = anio or "Todos"
+    ws["C2"] = "Evento"
+
+    if evento_id.isdigit():
+        evento = Evento.query.get(int(evento_id))
+        ws["D2"] = evento.nombre if evento else "N/D"
+    else:
+        ws["D2"] = "Todos"
+
+    headers = ["Año", "Evento", "Ingresos", "Egresos", "Balance"]
+    header_row = 4
+
+    for col_num, header in enumerate(headers, start=1):
+        cell = ws.cell(row=header_row, column=col_num, value=header)
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center")
+
+    row_num = header_row + 1
+    for r in rows:
+        ws.cell(row=row_num, column=1, value=r["evento"].anio)
+        ws.cell(row=row_num, column=2, value=r["evento"].nombre)
+        ws.cell(row=row_num, column=3, value=float(r["ingresos"]))
+        ws.cell(row=row_num, column=4, value=float(r["egresos"]))
+        ws.cell(row=row_num, column=5, value=float(r["balance"]))
+        row_num += 1
+
+    ws.cell(row=row_num, column=2, value="Totales").font = Font(bold=True)
+    ws.cell(row=row_num, column=3, value=float(total_ingresos)).font = Font(bold=True)
+    ws.cell(row=row_num, column=4, value=float(total_egresos)).font = Font(bold=True)
+    ws.cell(row=row_num, column=5, value=float(total_balance)).font = Font(bold=True)
+
+    for r in range(header_row + 1, row_num + 1):
+        for c in [3, 4, 5]:
+            ws.cell(row=r, column=c).number_format = '#,##0.00'
+
+    ws.column_dimensions["A"].width = 12
+    ws.column_dimensions["B"].width = 40
+    ws.column_dimensions["C"].width = 15
+    ws.column_dimensions["D"].width = 15
+    ws.column_dimensions["E"].width = 15
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="balance_financiero_evento.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )

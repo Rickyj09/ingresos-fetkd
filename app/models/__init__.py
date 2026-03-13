@@ -11,6 +11,7 @@ from app.models.eventos import (
 from app.models.inscripciones import Inscripcion, InscripcionDetalle
 from app.models.pagos import Pago
 from app.models.documentos import Numerador, DocumentoCobro
+from app.models.egresos import RubroEgreso, EgresoEvento
 
 __all__ = [
     "Role", "User",
@@ -20,4 +21,5 @@ __all__ = [
     "Inscripcion", "InscripcionDetalle",
     "Pago",
     "Numerador", "DocumentoCobro",
+    "RubroEgreso", "EgresoEvento",
 ]

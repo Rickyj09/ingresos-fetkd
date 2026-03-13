@@ -1,15 +1,20 @@
-import os 
-from flask import Flask
+import os
+from flask import Flask, redirect, url_for
+
 from app.config import Config
 from app.extensions import db, migrate, login_manager
+
 from app.blueprints.auth import bp as auth_bp
 from app.blueprints.academias import bp as academias_bp
-from flask import redirect, url_for 
 from app.blueprints.productos import bp as productos_bp
 from app.blueprints.eventos import bp as eventos_bp
 from app.blueprints.tarifas import bp as tarifas_bp
 from app.blueprints.reportes import bp as reportes_bp
 from app.blueprints.inscripciones import bp as inscripciones_bp
+from app.blueprints.egresos import bp as egresos_bp
+
+# cuando crees el blueprint de egresos, aquí lo agregaremos:
+# from app.blueprints.egresos import bp as egresos_bp
 
 
 def create_app():
@@ -22,7 +27,7 @@ def create_app():
     )
 
     app.config.from_object(Config)
-    
+
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
@@ -31,7 +36,9 @@ def create_app():
     def home():
         return redirect(url_for("academias.index"))
 
-    from app import models  # noqa
+    # Importa todos los modelos para que Flask-Migrate los detecte
+    from app import models  # noqa: F401
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(academias_bp)
     app.register_blueprint(productos_bp)
@@ -39,8 +46,7 @@ def create_app():
     app.register_blueprint(tarifas_bp)
     app.register_blueprint(reportes_bp)
     app.register_blueprint(inscripciones_bp)
+    # app.register_blueprint(egresos_bp)
+    app.register_blueprint(egresos_bp)
 
-    
     return app
-
-   

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Balance Financiero por Evento{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>Balance Financiero por Evento</h3>
+  <a class="btn btn-success"
+     href="{{ url_for('reportes.balance_evento_excel', anio=filtros.anio, evento_id=filtros.evento_id) }}">
+    Exportar Excel
+  </a>
+</div>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-2">
+    <input class="form-control" name="anio" placeholder="Año (ej: 2026)" value="{{ filtros.anio }}">
+  </div>
+
+  <div class="col-md-4">
+    <select class="form-select" name="evento_id">
+      <option value="">-- Evento (todos) --</option>
+      {% for e in eventos %}
+        <option value="{{ e.id }}" {% if filtros.evento_id|int == e.id %}selected{% endif %}>
+          {{ e.anio }} - {{ e.nombre }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-2 d-grid">
+    <button class="btn btn-outline-secondary">Filtrar</button>
+  </div>
+
+  <div class="col-md-2 d-grid">
+    <a class="btn btn-outline-dark" href="{{ url_for('reportes.balance_evento') }}">Limpiar</a>
+  </div>
+</form>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="fw-bold">Total Ingresos</div>
+        <div class="fs-4">{{ "%.2f"|format(total_ingresos or 0) }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="fw-bold">Total Egresos</div>
+        <div class="fs-4">{{ "%.2f"|format(total_egresos or 0) }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="fw-bold">Balance Neto</div>
+        <div class="fs-4">{{ "%.2f"|format(total_balance or 0) }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    {% if rows|length == 0 %}
+      <div class="text-muted">No hay datos para esos filtros.</div>
+    {% else %}
+      <div class="table-responsive">
+        <table class="table table-striped align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Año</th>
+              <th>Evento</th>
+              <th class="text-end">Ingresos</th>
+              <th class="text-end">Egresos</th>
+              <th class="text-end">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr>
+                <td>{{ r.evento.anio }}</td>
+                <td>{{ r.evento.nombre }}</td>
+                <td class="text-end">{{ "%.2f"|format(r.ingresos or 0) }}</td>
+                <td class="text-end">{{ "%.2f"|format(r.egresos or 0) }}</td>
+                <td class="text-end">{{ "%.2f"|format(r.balance or 0) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr class="fw-bold">
+              <td colspan="2" class="text-end">Totales</td>
+              <td class="text-end">{{ "%.2f"|format(total_ingresos or 0) }}</td>
+              <td class="text-end">{{ "%.2f"|format(total_egresos or 0) }}</td>
+              <td class="text-end">{{ "%.2f"|format(total_balance or 0) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
