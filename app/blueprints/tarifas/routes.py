@@ -1,18 +1,26 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+
 from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_required
+
 from app.extensions import db
-from app.models import Evento, TarifaEvento, TarifaEventoDetalle, CategoriaCompetencia, DivisionPoomsae
+from app.models import Evento, TarifaEvento, TarifaEventoDetalle
+
 from . import bp
 
-TIPOS = ["FIJO", "POR_CATEGORIA", "POR_NIVEL_DAN", "POR_DIVISION_POOMSAE"]
 
 @bp.route("/<int:evento_id>")
 @login_required
 def index(evento_id: int):
     evento = Evento.query.get_or_404(evento_id)
-    tarifas = TarifaEvento.query.filter_by(evento_id=evento_id).order_by(TarifaEvento.prioridad.asc()).all()
-    return render_template("tarifas/index.html", evento=evento, tarifas=tarifas, TIPOS=TIPOS)
+    tarifas = (
+        TarifaEvento.query
+        .filter_by(evento_id=evento_id)
+        .order_by(TarifaEvento.nombre.asc(), TarifaEvento.id.asc())
+        .all()
+    )
+    return render_template("tarifas/index.html", evento=evento, tarifas=tarifas)
+
 
 @bp.route("/<int:evento_id>/nueva", methods=["GET", "POST"])
 @login_required
@@ -21,105 +29,162 @@ def nueva(evento_id: int):
 
     if request.method == "POST":
         nombre = (request.form.get("nombre") or "").strip()
-        vigencia_desde = request.form.get("vigencia_desde")
-        vigencia_hasta = request.form.get("vigencia_hasta")
-        tipo_calculo = request.form.get("tipo_calculo")
-        valor = request.form.get("valor")
-        prioridad = request.form.get("prioridad", type=int) or 1
+        descripcion = (request.form.get("descripcion") or "").strip()
+        valor_raw = (request.form.get("valor") or "").strip()
+        activo = True if request.form.get("activo") == "on" else False
 
-        if tipo_calculo not in TIPOS:
-            flash("Tipo de cálculo inválido", "danger")
-            return render_template("tarifas/form.html", evento=evento, tarifa=None, TIPOS=TIPOS)
+        if not nombre:
+            flash("El nombre es obligatorio.", "danger")
+            return render_template("tarifas/form.html", evento=evento, tarifa=None)
+
+        if not valor_raw:
+            flash("El valor es obligatorio.", "danger")
+            return render_template("tarifas/form.html", evento=evento, tarifa=None)
+
+        valor_norm = valor_raw.replace(" ", "").replace("$", "").replace(",", ".")
+        try:
+            valor = Decimal(valor_norm)
+            if valor < 0:
+                raise ValueError()
+        except (InvalidOperation, ValueError):
+            flash("El valor ingresado no es válido.", "danger")
+            return render_template("tarifas/form.html", evento=evento, tarifa=None)
 
         t = TarifaEvento(
             evento_id=evento_id,
             nombre=nombre,
-            vigencia_desde=vigencia_desde,
-            vigencia_hasta=vigencia_hasta,
-            tipo_calculo=tipo_calculo,
-            valor=Decimal(valor) if valor and tipo_calculo == "FIJO" else None,
-            prioridad=prioridad,
+            descripcion=descripcion or None,
+            valor=valor,
+            activo=activo,
         )
         db.session.add(t)
         db.session.commit()
-        flash("Tarifa creada", "success")
+
+        flash("Tarifa creada.", "success")
         return redirect(url_for("tarifas.index", evento_id=evento_id))
 
-    return render_template("tarifas/form.html", evento=evento, tarifa=None, TIPOS=TIPOS)
+    return render_template("tarifas/form.html", evento=evento, tarifa=None)
+
 
 @bp.route("/<int:evento_id>/<int:tarifa_id>/editar", methods=["GET", "POST"])
 @login_required
 def editar(evento_id: int, tarifa_id: int):
     evento = Evento.query.get_or_404(evento_id)
-    tarifa = TarifaEvento.query.get_or_404(tarifa_id)
+    tarifa = TarifaEvento.query.filter_by(id=tarifa_id, evento_id=evento_id).first_or_404()
 
     if request.method == "POST":
-        tarifa.nombre = (request.form.get("nombre") or "").strip()
-        tarifa.vigencia_desde = request.form.get("vigencia_desde")
-        tarifa.vigencia_hasta = request.form.get("vigencia_hasta")
-        tarifa.tipo_calculo = request.form.get("tipo_calculo")
-        tarifa.prioridad = request.form.get("prioridad", type=int) or 1
-        valor = request.form.get("valor")
+        nombre = (request.form.get("nombre") or "").strip()
+        descripcion = (request.form.get("descripcion") or "").strip()
+        valor_raw = (request.form.get("valor") or "").strip()
+        activo = True if request.form.get("activo") == "on" else False
 
-        tarifa.valor = Decimal(valor) if valor and tarifa.tipo_calculo == "FIJO" else None
+        if not nombre:
+            flash("El nombre es obligatorio.", "danger")
+            return render_template("tarifas/form.html", evento=evento, tarifa=tarifa)
+
+        if not valor_raw:
+            flash("El valor es obligatorio.", "danger")
+            return render_template("tarifas/form.html", evento=evento, tarifa=tarifa)
+
+        valor_norm = valor_raw.replace(" ", "").replace("$", "").replace(",", ".")
+        try:
+            valor = Decimal(valor_norm)
+            if valor < 0:
+                raise ValueError()
+        except (InvalidOperation, ValueError):
+            flash("El valor ingresado no es válido.", "danger")
+            return render_template("tarifas/form.html", evento=evento, tarifa=tarifa)
+
+        tarifa.nombre = nombre
+        tarifa.descripcion = descripcion or None
+        tarifa.valor = valor
+        tarifa.activo = activo
 
         db.session.commit()
-        flash("Tarifa actualizada", "success")
+        flash("Tarifa actualizada.", "success")
         return redirect(url_for("tarifas.index", evento_id=evento_id))
 
-    return render_template("tarifas/form.html", evento=evento, tarifa=tarifa, TIPOS=TIPOS)
+    return render_template("tarifas/form.html", evento=evento, tarifa=tarifa)
+
 
 @bp.route("/<int:evento_id>/<int:tarifa_id>/eliminar", methods=["POST"])
 @login_required
 def eliminar(evento_id: int, tarifa_id: int):
-    tarifa = TarifaEvento.query.get_or_404(tarifa_id)
+    tarifa = TarifaEvento.query.filter_by(id=tarifa_id, evento_id=evento_id).first_or_404()
     db.session.delete(tarifa)
     db.session.commit()
-    flash("Tarifa eliminada", "success")
+
+    flash("Tarifa eliminada.", "success")
     return redirect(url_for("tarifas.index", evento_id=evento_id))
+
 
 @bp.route("/<int:evento_id>/<int:tarifa_id>/detalles", methods=["GET", "POST"])
 @login_required
 def detalles(evento_id: int, tarifa_id: int):
     evento = Evento.query.get_or_404(evento_id)
-    tarifa = TarifaEvento.query.get_or_404(tarifa_id)
-
-    categorias = CategoriaCompetencia.query.order_by(CategoriaCompetencia.nombre.asc()).all()
-    divisiones = DivisionPoomsae.query.order_by(DivisionPoomsae.nombre.asc()).all()
+    tarifa = TarifaEvento.query.filter_by(id=tarifa_id, evento_id=evento_id).first_or_404()
 
     if request.method == "POST":
-        valor = request.form.get("valor")
-        categoria_id = request.form.get("categoria_id", type=int)
-        division_poomsae_id = request.form.get("division_poomsae_id", type=int)
-        dan_nivel = request.form.get("dan_nivel", type=int)
+        concepto = (request.form.get("concepto") or "").strip()
+        valor_raw = (request.form.get("valor") or "").strip()
+
+        if not concepto or not valor_raw:
+            flash("Concepto y valor son obligatorios.", "danger")
+            return render_template(
+                "tarifas/detalles.html",
+                evento=evento,
+                tarifa=tarifa,
+                detalles=TarifaEventoDetalle.query.filter_by(tarifa_evento_id=tarifa_id).order_by(TarifaEventoDetalle.id.asc()).all(),
+            )
+
+        valor_norm = valor_raw.replace(" ", "").replace("$", "").replace(",", ".")
+        try:
+            valor = Decimal(valor_norm)
+            if valor < 0:
+                raise ValueError()
+        except (InvalidOperation, ValueError):
+            flash("Valor inválido.", "danger")
+            return render_template(
+                "tarifas/detalles.html",
+                evento=evento,
+                tarifa=tarifa,
+                detalles=TarifaEventoDetalle.query.filter_by(tarifa_evento_id=tarifa_id).order_by(TarifaEventoDetalle.id.asc()).all(),
+            )
 
         d = TarifaEventoDetalle(
-            tarifa_id=tarifa_id,
-            categoria_id=categoria_id if categoria_id else None,
-            division_poomsae_id=division_poomsae_id if division_poomsae_id else None,
-            dan_nivel=dan_nivel if dan_nivel else None,
-            valor=Decimal(valor),
+            tarifa_evento_id=tarifa_id,
+            concepto=concepto,
+            valor=valor,
         )
         db.session.add(d)
         db.session.commit()
-        flash("Detalle agregado", "success")
+
+        flash("Detalle agregado.", "success")
         return redirect(url_for("tarifas.detalles", evento_id=evento_id, tarifa_id=tarifa_id))
 
-    detalles = TarifaEventoDetalle.query.filter_by(tarifa_id=tarifa_id).all()
+    detalles = (
+        TarifaEventoDetalle.query
+        .filter_by(tarifa_evento_id=tarifa_id)
+        .order_by(TarifaEventoDetalle.id.asc())
+        .all()
+    )
+
     return render_template(
         "tarifas/detalles.html",
         evento=evento,
         tarifa=tarifa,
         detalles=detalles,
-        categorias=categorias,
-        divisiones=divisiones
     )
+
 
 @bp.route("/<int:evento_id>/<int:tarifa_id>/detalles/<int:detalle_id>/eliminar", methods=["POST"])
 @login_required
 def eliminar_detalle(evento_id: int, tarifa_id: int, detalle_id: int):
-    d = TarifaEventoDetalle.query.get_or_404(detalle_id)
+    tarifa = TarifaEvento.query.filter_by(id=tarifa_id, evento_id=evento_id).first_or_404()
+    d = TarifaEventoDetalle.query.filter_by(id=detalle_id, tarifa_evento_id=tarifa.id).first_or_404()
+
     db.session.delete(d)
     db.session.commit()
-    flash("Detalle eliminado", "success")
+
+    flash("Detalle eliminado.", "success")
     return redirect(url_for("tarifas.detalles", evento_id=evento_id, tarifa_id=tarifa_id))

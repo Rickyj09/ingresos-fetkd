@@ -5,9 +5,9 @@ from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_required
 
 from app.extensions import db
-from app.models.inscripciones import Inscripcion
+from app.models.inscripciones import Inscripcion, InscripcionDetalle
 from app.models.academia import Academia
-from app.models.eventos import Evento
+from app.models.eventos import Evento, TarifaEvento
 from app.models.catalogos import ProductoServicio
 from app.models.pagos import Pago
 from app.utils.inscripcion_calc import recalcular_inscripcion
@@ -68,64 +68,133 @@ def nuevo():
     eventos = Evento.query.order_by(Evento.anio.desc(), Evento.nombre.asc()).all()
     academias = Academia.query.order_by(Academia.nombre.asc()).all()
 
+    if not eventos:
+        flash("No existen eventos registrados.", "warning")
+        return render_template(
+            "inscripciones/nuevo.html",
+            eventos=[],
+            academias=academias,
+            tarifas=[],
+            evento_seleccionado_id=None,
+        )
+
+    evento_seleccionado_id = request.values.get("evento_id", type=int)
+    if not evento_seleccionado_id:
+        evento_seleccionado_id = eventos[0].id
+
+    evento = Evento.query.get_or_404(evento_seleccionado_id)
+
+    tarifas = (
+        TarifaEvento.query
+        .filter_by(evento_id=evento.id, activo=True)
+        .order_by(TarifaEvento.nombre.asc(), TarifaEvento.id.asc())
+        .all()
+    )
+
     if request.method == "POST":
-        evento_id_str = (request.form.get("evento_id") or "").strip()
-        academia_id_str = (request.form.get("academia_id") or "").strip()
-        cantidad_str = (request.form.get("cantidad_participantes") or "1").strip()
+        academia_id = request.form.get("academia_id", type=int)
 
-        if not evento_id_str.isdigit() or not academia_id_str.isdigit():
-            flash("Debe seleccionar Evento y Academia.", "danger")
-            return render_template("inscripciones/nuevo.html", eventos=eventos, academias=academias)
-
-        if not cantidad_str.isdigit() or int(cantidad_str) <= 0:
-            flash("La cantidad de participantes debe ser un número mayor a 0.", "danger")
-            return render_template("inscripciones/nuevo.html", eventos=eventos, academias=academias)
-
-        evento_id = int(evento_id_str)
-        academia_id = int(academia_id_str)
-        cantidad_participantes = int(cantidad_str)
-
-        evento = Evento.query.get(evento_id)
-        if not evento:
-            flash("Evento no encontrado.", "danger")
-            return render_template("inscripciones/nuevo.html", eventos=eventos, academias=academias)
-
-        existe = (
-            Inscripcion.query
-            .filter(
-                Inscripcion.evento_id == evento_id,
-                Inscripcion.academia_id == academia_id
+        if not academia_id:
+            flash("Debes seleccionar una academia.", "danger")
+            return render_template(
+                "inscripciones/nuevo.html",
+                eventos=eventos,
+                academias=academias,
+                tarifas=tarifas,
+                evento_seleccionado_id=evento.id,
             )
-            .first()
-        )
-        if existe:
-            flash("Ya existe una inscripción para esa academia en ese evento.", "warning")
-            return render_template("inscripciones/nuevo.html", eventos=eventos, academias=academias)
 
-        valor_base = Decimal(str(evento.valor_base or 0))
-        subtotal = Decimal(cantidad_participantes) * valor_base
-        descuentos = Decimal("0.00")
-        total = subtotal - descuentos
-        saldo = total
+        academia = Academia.query.get_or_404(academia_id)
 
-        ins = Inscripcion(
-            evento_id=evento_id,
-            academia_id=academia_id,
+        existente = Inscripcion.query.filter_by(
+            evento_id=evento.id,
+            academia_id=academia.id
+        ).first()
+
+        if existente:
+            flash("Ya existe una inscripción para esta academia en el evento seleccionado.", "warning")
+            return render_template(
+                "inscripciones/nuevo.html",
+                eventos=eventos,
+                academias=academias,
+                tarifas=tarifas,
+                evento_seleccionado_id=evento.id,
+            )
+
+        total_participantes = 0
+        subtotal_general = Decimal("0.00")
+        detalles_crear = []
+
+        for tarifa in tarifas:
+            cantidad = request.form.get(f"cantidad_{tarifa.id}", type=int) or 0
+
+            if cantidad < 0:
+                cantidad = 0
+
+            if cantidad == 0:
+                continue
+
+            valor_unitario = Decimal(str(tarifa.valor or 0))
+            total_linea = valor_unitario * cantidad
+
+            total_participantes += cantidad
+            subtotal_general += total_linea
+
+            detalles_crear.append({
+                "tarifa_evento_id": tarifa.id,
+                "concepto": tarifa.nombre,
+                "cantidad": cantidad,
+                "valor_unitario": valor_unitario,
+                "total": total_linea,
+            })
+
+        if total_participantes <= 0:
+            flash("Debes ingresar al menos una cantidad en alguna tarifa.", "danger")
+            return render_template(
+                "inscripciones/nuevo.html",
+                eventos=eventos,
+                academias=academias,
+                tarifas=tarifas,
+                evento_seleccionado_id=evento.id,
+            )
+
+        inscripcion = Inscripcion(
+            evento_id=evento.id,
+            academia_id=academia.id,
             estado="BORRADOR",
-            cantidad_participantes=cantidad_participantes,
-            subtotal=subtotal,
-            descuentos=descuentos,
-            total=total,
-            saldo=saldo,
+            cantidad_participantes=total_participantes,
+            subtotal=subtotal_general,
+            descuentos=Decimal("0.00"),
+            total=subtotal_general,
+            saldo=subtotal_general,
         )
 
-        db.session.add(ins)
+        db.session.add(inscripcion)
+        db.session.flush()
+
+        for d in detalles_crear:
+            detalle = InscripcionDetalle(
+                inscripcion_id=inscripcion.id,
+                tarifa_evento_id=d["tarifa_evento_id"],
+                concepto=d["concepto"],
+                cantidad=d["cantidad"],
+                valor_unitario=d["valor_unitario"],
+                total=d["total"],
+            )
+            db.session.add(detalle)
+
         db.session.commit()
 
         flash("Inscripción creada correctamente.", "success")
         return redirect(url_for("inscripciones.index"))
 
-    return render_template("inscripciones/nuevo.html", eventos=eventos, academias=academias)
+    return render_template(
+        "inscripciones/nuevo.html",
+        eventos=eventos,
+        academias=academias,
+        tarifas=tarifas,
+        evento_seleccionado_id=evento.id,
+    )
 
 
 @bp.route("/<int:inscripcion_id>/pagos")

@@ -12,6 +12,7 @@ from app.models.inscripciones import Inscripcion, InscripcionDetalle
 from app.models.pagos import Pago
 from app.models.documentos import Numerador, DocumentoCobro
 from app.models.egresos import RubroEgreso, EgresoEvento
+from .inscripcion_evento_detalle import InscripcionEventoDetalle
 
 __all__ = [
     "Role", "User",
